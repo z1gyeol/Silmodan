@@ -148,7 +148,10 @@
           </label>
           <label class="field grow">
             <span>회차</span>
-            <input name="round" id="f-round" maxlength="20" placeholder="예: 3회" />
+            <div class="suffix-wrap">
+              <input name="round" id="f-round" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="예: 3" autocomplete="off" />
+              <span class="suffix">회</span>
+            </div>
           </label>
         </div>
 

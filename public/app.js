@@ -633,13 +633,30 @@ function openDialog(exam) {
   $('#f-date').value = exam ? exam.examDate || '' : todayStr();
   $('#f-date').max = todayStr();
   fillYearOptions(exam ? exam.schoolYear : defaultSchoolYear());
-  $('#f-round').value = exam ? exam.round : '';
+  // 'N회'는 숫자만 보여 주고, 예전 형식(예: '9월')은 손대지 않으면 그대로 저장
+  const legacyRound = exam && exam.round && !/^\d+회$/.test(exam.round) ? exam.round : null;
+  state.form.legacyRound = legacyRound;
+  $('#f-round').value = exam ? exam.round.replace(/\D/g, '').slice(0, 3) : '';
+  $('#f-round').placeholder = legacyRound ? `기존: ${legacyRound}` : '예: 3';
+  if (legacyRound) $('#f-round').value = '';
   $('#f-score').value = exam ? exam.score : '';
 
   setFormSubject(exam ? exam.subject : state.subject, false);
   fillNameOptions(state.form.subject, exam ? exam.examName : '');
   dialog.showModal();
 }
+
+function roundValue() {
+  const digits = $('#f-round').value.replace(/\D/g, '');
+  if (digits) return `${Number(digits)}회`;
+  return state.form.legacyRound || '';
+}
+
+// 회차 칸에는 숫자만 남긴다 (붙여넣기 포함)
+$('#f-round').addEventListener('input', (e) => {
+  const digits = e.target.value.replace(/\D/g, '').slice(0, 3);
+  if (digits !== e.target.value) e.target.value = digits;
+});
 
 function closeDialog() {
   dialog.close();
@@ -679,7 +696,7 @@ $('#exam-form').addEventListener('submit', async (e) => {
     examDate,
     schoolYear: Number($('#f-year').value),
     examName,
-    round: $('#f-round').value.trim(),
+    round: roundValue(),
     score: Number(scoreStr),
     wrong: [...state.form.wrong],
     guessed: [...state.form.guessed],

@@ -88,12 +88,15 @@ input, select { font: inherit; color: inherit; }
 .row { display: flex; gap: 12px; align-items: flex-end; }
 .row .field { min-width: 0; }
 .grow { flex: 1; }
+.suffix-wrap { position: relative; }
+.suffix-wrap input { padding-right: 36px !important; }
+.suffix { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-2); pointer-events: none; }
 .field-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .field-head > label:first-child { font-size: 13px; font-weight: 600; color: var(--text-2); }
 .check-inline { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 14px; color: var(--text-2); cursor: pointer; }
 
 /* 날짜 입력: iOS Safari 기본 스타일(가운데 정렬, 아이콘 없음, 고정 폭)을 덮어쓰고 달력 아이콘을 직접 그린다 */
-.field input:not([type="checkbox"]), .field select { min-height: 44px; }
+.field input:not([type="checkbox"]), .field select { height: 46px; }
 .date-wrap { position: relative; }
 .date-wrap::after {
   content: ''; position: absolute; right: 12px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); pointer-events: none;
