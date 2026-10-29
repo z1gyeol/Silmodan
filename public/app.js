@@ -11,7 +11,8 @@ const state = {
   user: null,
   subjects: null,
   subject: 'korean',
-  exams: [], // 오래된 순
+  allExams: [], // 두 과목 전체 (오래된 순)
+  exams: [], // 현재 과목만 (오래된 순)
   allNames: { korean: new Set(), math: new Set() },
   editing: null,
   // notes 에는 사용자가 직접 고른 비고만 담고, '찍맞'은 guessed 가 있으면 자동으로 붙인다
@@ -99,11 +100,19 @@ async function enterApp(user) {
 }
 
 // ---------- 데이터 ----------
+// 두 과목 기록을 한 번에 받아 두고, 과목 전환은 서버 요청 없이 바로 그린다
 async function loadExams() {
   const { exams } = await api('/api/exams');
+  state.allExams = exams;
   state.allNames = { korean: new Set(), math: new Set() };
   exams.forEach((e) => state.allNames[e.subject].add(e.examName));
-  state.exams = exams.filter((e) => e.subject === state.subject);
+  showSubject(state.subject);
+}
+
+function showSubject(subject) {
+  state.subject = subject;
+  document.querySelectorAll('#subject-tabs .seg-btn').forEach((x) => x.classList.toggle('active', x.dataset.subject === subject));
+  state.exams = state.allExams.filter((e) => e.subject === subject);
   render();
 }
 
@@ -174,6 +183,7 @@ function renderChart() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: { duration: 300 },
         interaction: { mode: 'index', intersect: false },
         layout: { padding: { top: 8, right: 8 } },
         plugins: {
@@ -369,11 +379,7 @@ $('#records-body').addEventListener('click', async (ev) => {
 
 // ---------- 과목 탭 ----------
 document.querySelectorAll('#subject-tabs .seg-btn').forEach((b) =>
-  b.addEventListener('click', () => {
-    state.subject = b.dataset.subject;
-    document.querySelectorAll('#subject-tabs .seg-btn').forEach((x) => x.classList.toggle('active', x === b));
-    loadExams().catch((err) => toast(err.message));
-  })
+  b.addEventListener('click', () => showSubject(b.dataset.subject))
 );
 
 // ---------- 입력 모달 ----------
@@ -689,8 +695,8 @@ $('#exam-form').addEventListener('submit', async (e) => {
     closeDialog();
     toast(state.editing ? '수정했습니다.' : '기록을 추가했습니다.');
     // 저장한 과목 탭으로 이동
-    if (body.subject !== state.subject) document.querySelector(`#subject-tabs .seg-btn[data-subject="${body.subject}"]`).click();
-    else await loadExams();
+    state.subject = body.subject;
+    await loadExams();
   } catch (err) {
     errEl.textContent = err.message;
     errEl.hidden = false;
@@ -702,9 +708,8 @@ $('#exam-form').addEventListener('submit', async (e) => {
 // ---------- 시작 ----------
 (async function init() {
   try {
-    const { subjects } = await api('/api/config');
+    const [{ subjects }, { user }] = await Promise.all([api('/api/config'), api('/api/me')]);
     state.subjects = subjects;
-    const { user } = await api('/api/me');
     if (user) await enterApp(user);
     else showAuth();
   } catch (err) {

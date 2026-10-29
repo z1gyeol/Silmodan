@@ -80,15 +80,42 @@ input, select { font: inherit; color: inherit; }
 /* ---------- 폼 ---------- */
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .field > span { font-size: 13px; font-weight: 600; color: var(--text-2); }
-.field input, .field select {
+.field input:not([type="checkbox"]), .field select {
   border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); outline: none; width: 100%;
 }
-.field input:focus, .field select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-100); }
+.field input:not([type="checkbox"]):focus, .field select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-100); }
 .field input:disabled { background: var(--surface-2); color: var(--muted); }
 .row { display: flex; gap: 12px; align-items: flex-end; }
 .row .field { min-width: 0; }
 .grow { flex: 1; }
-.check-inline { display: flex; align-items: center; gap: 6px; padding-bottom: 24px; white-space: nowrap; font-size: 14px; color: var(--text-2); cursor: pointer; }
+.field-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.field-head > label:first-child { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.check-inline { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 14px; color: var(--text-2); cursor: pointer; }
+
+/* 날짜 입력: iOS Safari 기본 스타일(가운데 정렬, 아이콘 없음, 고정 폭)을 덮어쓰고 달력 아이콘을 직접 그린다 */
+.field input:not([type="checkbox"]), .field select { min-height: 44px; }
+.date-wrap { position: relative; }
+.date-wrap::after {
+  content: ''; position: absolute; right: 12px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); pointer-events: none;
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4.5' width='18' height='16.5' rx='2.5'/%3E%3Cpath d='M3 9.5h18M8 2.5v4M16 2.5v4'/%3E%3C/svg%3E");
+}
+.date-wrap:has(input:disabled)::after { opacity: .4; }
+.date-wrap input[type='date'] {
+  -webkit-appearance: none; appearance: none; display: block; min-width: 0; width: 100%;
+  position: relative; text-align: left; padding-right: 40px; line-height: 22px; background: var(--surface);
+}
+.date-wrap input[type='date']:disabled { background: var(--surface-2); }
+.date-wrap input[type='date']::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.date-wrap input[type='date']::-webkit-datetime-edit { padding: 0; }
+/* 크롬/엣지: 기본 아이콘을 투명하게 입력칸 전체에 펼쳐서 어디를 눌러도 달력이 열리게 */
+.date-wrap input[type='date']::-webkit-calendar-picker-indicator {
+  position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; opacity: 0; cursor: pointer;
+}
+/* 파이어폭스는 자체 아이콘을 쓰므로 직접 그린 아이콘은 숨긴다 */
+@supports (-moz-appearance: none) {
+  .date-wrap::after { display: none; }
+  .date-wrap input[type='date'] { padding-right: 12px; }
+}
 .check-inline input { accent-color: var(--primary); width: 16px; height: 16px; }
 .form-error { color: var(--danger); font-size: 13px; margin: 4px 0 12px; white-space: pre-line; }
 
@@ -198,6 +225,7 @@ dialog::backdrop { background: rgba(30, 16, 60, .45); }
   .grid-2 { grid-template-columns: 1fr; gap: 0; }
 }
 @media (max-width: 520px) {
+  .field input:not([type="checkbox"]), .field select, .area-box input { font-size: 16px; }
   .qgrid { grid-template-columns: repeat(6, 1fr); }
   .chart-wrap { height: 240px; }
   .toolbar .btn { padding: 9px 12px; }
