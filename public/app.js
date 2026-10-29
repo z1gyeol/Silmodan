@@ -5,6 +5,7 @@ const NAME_PRESETS = {
   math: ['평가원 모의평가', '교육청 학력평가', '수능', '시대인재 서바이벌', '강대 K', '이해원', '한수', '상상', '더프리미엄', '킬링캠프'],
 };
 const CUSTOM = '__custom__';
+const GUESS_NOTE = '찍맞';
 
 const state = {
   user: null,
@@ -13,7 +14,8 @@ const state = {
   exams: [], // 오래된 순
   allNames: { korean: new Set(), math: new Set() },
   editing: null,
-  form: { subject: 'korean', wrong: new Set(), notes: new Set() },
+  // notes 에는 사용자가 직접 고른 비고만 담고, '찍맞'은 guessed 가 있으면 자동으로 붙인다
+  form: { subject: 'korean', wrong: new Set(), guessed: new Set(), notes: new Set(), areaManual: {}, qMode: 'wrong' },
 };
 
 let chart = null;
@@ -120,6 +122,7 @@ function formatDate(d) {
 function render() {
   renderStats();
   renderChart();
+  renderAreaStats();
   renderNoteStats();
   renderWrongStats();
   renderTable();
@@ -188,6 +191,9 @@ function renderChart() {
                 const e = chart.$exams[item.dataIndex];
                 const lines = [`점수: ${e.score}점`, `날짜: ${e.examDate ? formatDate(e.examDate) : '날짜 모름'}`];
                 if (e.wrong.length) lines.push(`틀린 문제: ${e.wrong.join(', ')}`);
+                if (e.guessed.length) lines.push(`찍맞: ${e.guessed.join(', ')}`);
+                const areas = areaText(e);
+                if (areas) lines.push(`틀린 영역: ${areas}`);
                 if (e.notes.length) lines.push(`비고: ${e.notes.join(', ')}`);
                 return lines;
               },
@@ -241,6 +247,40 @@ function renderChart() {
   chart.update();
 }
 
+function areaText(e) {
+  return Object.entries(e.areas)
+    .filter(([, c]) => c)
+    .map(([name, c]) => `${name} ${c}`)
+    .join(' · ');
+}
+
+function renderAreaStats() {
+  const ex = state.exams;
+  if (!ex.length) {
+    $('#area-stats').innerHTML = '<p class="empty">기록이 없습니다.</p>';
+    return;
+  }
+  const areas = state.subjects[state.subject].areas;
+  const rows = areas.map((a) => {
+    const known = ex.filter((e) => e.areas[a.name] !== null && e.areas[a.name] !== undefined);
+    const total = known.reduce((sum, e) => sum + e.areas[a.name], 0);
+    return { name: a.name, total, avg: known.length ? total / known.length : 0, missing: ex.length - known.length };
+  });
+  const max = Math.max(1, ...rows.map((r) => r.total));
+  const missing = Math.max(...rows.map((r) => r.missing));
+  $('#area-stats').innerHTML =
+    rows
+      .map(
+        (r) => `<div class="bar-row">
+          <span>${esc(r.name)}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${(r.total / max) * 100}%"></div></div>
+          <span class="bar-count">${r.total}개 · 평균 ${r.avg.toFixed(1)}</span>
+        </div>`
+      )
+      .join('') +
+    `<p class="muted small" style="margin:6px 0 0">영역별 누적 틀린 개수 · 시험당 평균${missing ? ` (영역 미입력 ${missing}회 제외)` : ''}</p>`;
+}
+
 function renderNoteStats() {
   const notes = state.subjects[state.subject].notes;
   const ex = state.exams;
@@ -279,23 +319,24 @@ function renderWrongStats() {
 function renderTable() {
   const ex = state.exams;
   $('#records-empty').hidden = ex.length > 0;
-  const unknown = ex.filter((e) => !e.examDate);
   const rows = [...ex].reverse(); // 최근 시험이 위로
   $('#records-body').innerHTML = rows
     .map((e) => {
       const isUnknown = !e.examDate;
-      const uIdx = isUnknown ? unknown.indexOf(e) : -1;
+      const idx = ex.indexOf(e);
       const moveBtns = isUnknown
-        ? `<button class="act" data-act="newer" data-id="${e.id}" title="더 최근으로" ${uIdx === unknown.length - 1 ? 'disabled' : ''}>▲</button>
-           <button class="act" data-act="older" data-id="${e.id}" title="더 예전으로" ${uIdx === 0 ? 'disabled' : ''}>▼</button>`
+        ? `<button class="act" data-act="newer" data-id="${e.id}" title="더 최근으로" ${idx === ex.length - 1 ? 'disabled' : ''}>▲</button>
+           <button class="act" data-act="older" data-id="${e.id}" title="더 예전으로" ${idx === 0 ? 'disabled' : ''}>▼</button>`
         : '';
+      const guessed = e.guessed.length ? `<span class="guess-tag">찍맞 ${esc(e.guessed.join(', '))}</span>` : '';
       return `<tr>
         <td>${isUnknown ? '<span class="badge badge-unknown">날짜 모름</span>' : esc(formatDate(e.examDate))}</td>
         <td><span class="badge">${e.schoolYear}</span></td>
         <td>${esc(e.examName)}</td>
         <td>${esc(e.round || '-')}</td>
         <td class="num score-cell">${e.score}</td>
-        <td class="wrong-cell">${e.wrong.length ? esc(e.wrong.join(', ')) : '<span class="muted">-</span>'}</td>
+        <td class="wrong-cell">${e.wrong.length ? esc(e.wrong.join(', ')) : '<span class="muted">-</span>'}${guessed}</td>
+        <td class="area-cell">${esc(areaText(e)) || '<span class="muted">-</span>'}</td>
         <td>${e.notes.length ? e.notes.map((n) => `<span class="note-tag">${esc(n)}</span>`).join('') : '<span class="muted">-</span>'}</td>
         <td><div class="actions">${moveBtns}
           <button class="act" data-act="edit" data-id="${e.id}">수정</button>
@@ -382,10 +423,10 @@ function setFormSubject(subject, keepName) {
   const conf = state.subjects[subject];
   // 범위를 벗어난 문항 / 해당 과목에 없는 비고는 제거
   state.form.wrong = new Set([...state.form.wrong].filter((q) => q <= conf.maxQuestion));
+  state.form.guessed = new Set([...state.form.guessed].filter((q) => q <= conf.maxQuestion));
   state.form.notes = new Set([...state.form.notes].filter((n) => conf.notes.includes(n)));
   fillNameOptions(subject, prevName);
   renderQGrid();
-  renderNoteChips();
 }
 
 function currentName() {
@@ -393,31 +434,161 @@ function currentName() {
   return v === CUSTOM ? $('#f-name-custom').value.trim() : v;
 }
 
+// 문항 선택이 바뀌면 문항 그리드, 틀린 영역, 비고를 함께 다시 그린다
 function renderQGrid() {
+  const { wrong, guessed } = state.form;
   const max = state.subjects[state.form.subject].maxQuestion;
   let html = '';
-  for (let q = 1; q <= max; q++) html += `<button type="button" class="qbtn${state.form.wrong.has(q) ? ' on' : ''}" data-q="${q}">${q}</button>`;
+  for (let q = 1; q <= max; q++) {
+    const cls = wrong.has(q) ? ' on' : guessed.has(q) ? ' guess' : '';
+    html += `<button type="button" class="qbtn${cls}" data-q="${q}">${q}</button>`;
+  }
   $('#f-wrong').innerHTML = html;
-  $('#wrong-count').textContent = state.form.wrong.size ? `${state.form.wrong.size}문제 선택` : '(번호를 눌러 선택)';
+  const parts = [];
+  if (wrong.size) parts.push(`틀림 ${wrong.size}`);
+  if (guessed.size) parts.push(`찍맞 ${guessed.size}`);
+  $('#wrong-count').textContent = parts.length ? parts.join(' · ') : '';
+  syncAreaManual();
+  renderAreas();
+  renderNoteChips();
+}
+
+function formNotes() {
+  const notes = new Set(state.form.notes);
+  if (state.form.guessed.size) notes.add(GUESS_NOTE);
+  return state.subjects[state.form.subject].notes.filter((n) => notes.has(n));
 }
 
 function renderNoteChips() {
+  const active = new Set(formNotes());
+  const locked = state.form.guessed.size > 0;
   $('#f-notes').innerHTML = state.subjects[state.form.subject].notes
-    .map((n) => `<button type="button" class="chip${state.form.notes.has(n) ? ' on' : ''}" data-note="${esc(n)}">${esc(n)}</button>`)
+    .map((n) => {
+      const isLocked = n === GUESS_NOTE && locked;
+      return `<button type="button" class="chip${active.has(n) ? ' on' : ''}${isLocked ? ' locked' : ''}" data-note="${esc(n)}"
+        ${isLocked ? 'title="찍맞 문제가 선택되어 자동으로 추가됩니다"' : ''}>${esc(n)}</button>`;
+    })
     .join('');
+}
+
+// 수동 입력 영역(수학 수1/수2)의 범위에서 틀린 문제 수
+function manualTotal() {
+  const range = state.subjects[state.form.subject].manualRange;
+  return range ? [...state.form.wrong].filter((q) => q >= range.from && q <= range.to).length : 0;
+}
+
+function manualNames() {
+  return state.subjects[state.form.subject].areas.filter((a) => a.manual).map((a) => a.name);
+}
+
+// 틀린 문제 수가 바뀌면 수1/수2 합이 맞도록 마지막 칸을 조정한다 (아직 입력 안 한 칸은 그대로 둔다)
+function syncAreaManual() {
+  const names = manualNames();
+  if (!names.length) return;
+  const total = manualTotal();
+  const m = state.form.areaManual;
+  if (total === 0) {
+    names.forEach((n) => (m[n] = 0));
+    return;
+  }
+  if (names.length === 1) {
+    m[names[0]] = total;
+    return;
+  }
+  if (!names.every((n) => Number.isInteger(m[n]))) return;
+  if (names.every((n) => m[n] === 0)) {
+    // 틀린 문제가 처음 생긴 경우: 사용자가 직접 나누도록 비워 둔다
+    names.forEach((n) => (m[n] = null));
+    return;
+  }
+  const last = names[names.length - 1];
+  let others = names.filter((n) => n !== last).reduce((acc, n) => acc + m[n], 0);
+  if (others > total) {
+    names.filter((n) => n !== last).forEach((n, i) => (m[n] = i === 0 ? total : 0));
+    others = total;
+  }
+  m[last] = total - others;
+}
+
+function renderAreas() {
+  const conf = state.subjects[state.form.subject];
+  const wrong = [...state.form.wrong];
+  $('#f-areas').innerHTML = conf.areas
+    .map((a) => {
+      if (a.manual) {
+        const v = state.form.areaManual[a.name];
+        return `<label class="area-box manual">${esc(a.name)}
+          <input type="number" min="0" max="${conf.maxQuestion}" inputmode="numeric" data-area="${esc(a.name)}"
+            value="${Number.isInteger(v) ? v : ''}" ${manualTotal() === 0 ? 'disabled' : ''} /></label>`;
+      }
+      const count = wrong.filter((q) => q >= a.from && q <= a.to).length;
+      return `<div class="area-box">${esc(a.name)} <b>${count}</b><span class="auto">${a.from}~${a.to}번</span></div>`;
+    })
+    .join('');
+  updateAreaHint();
+}
+
+function updateAreaHint() {
+  const conf = state.subjects[state.form.subject];
+  const hint = $('#f-areas-hint');
+  if (!conf.manualRange) {
+    hint.textContent = '틀린 문제 번호로 자동 계산됩니다.';
+    return;
+  }
+  const names = manualNames();
+  const total = manualTotal();
+  const sum = names.reduce((a, n) => a + (Number.isInteger(state.form.areaManual[n]) ? state.form.areaManual[n] : 0), 0);
+  const auto = conf.areas.filter((a) => !a.manual).map((a) => `${a.name}(${a.from}~${a.to}번)`).join(', ');
+  hint.textContent =
+    total === 0
+      ? `${conf.manualRange.from}~${conf.manualRange.to}번에서 틀린 문제가 없습니다. ${auto}은 자동 계산됩니다.`
+      : `${conf.manualRange.from}~${conf.manualRange.to}번 틀린 ${total}문제를 ${names.join('/')}로 나눠 입력하세요 (현재 합 ${sum}). ${auto}은 자동 계산됩니다.`;
+  hint.style.color = total && sum !== total ? 'var(--danger)' : '';
+}
+
+$('#f-areas').addEventListener('input', (e) => {
+  const input = e.target.closest('input[data-area]');
+  if (!input) return;
+  const names = manualNames();
+  const total = manualTotal();
+  const v = input.value === '' ? null : Math.max(0, Math.min(total, Math.floor(Number(input.value))));
+  state.form.areaManual[input.dataset.area] = v;
+  // 칸이 두 개면 나머지 칸을 자동으로 채운다
+  if (names.length === 2 && v !== null) {
+    const other = names.find((n) => n !== input.dataset.area);
+    state.form.areaManual[other] = total - v;
+    const otherInput = $(`#f-areas input[data-area="${other}"]`);
+    if (otherInput) otherInput.value = total - v;
+  }
+  updateAreaHint();
+});
+
+document.querySelectorAll('#q-mode .seg-btn').forEach((b) =>
+  b.addEventListener('click', () => setQMode(b.dataset.mode))
+);
+
+function setQMode(mode) {
+  state.form.qMode = mode;
+  document.querySelectorAll('#q-mode .seg-btn').forEach((x) => x.classList.toggle('active', x.dataset.mode === mode));
 }
 
 $('#f-wrong').addEventListener('click', (e) => {
   const b = e.target.closest('.qbtn');
   if (!b) return;
   const q = Number(b.dataset.q);
-  state.form.wrong.has(q) ? state.form.wrong.delete(q) : state.form.wrong.add(q);
+  const { wrong, guessed, qMode } = state.form;
+  const [target, other] = qMode === 'wrong' ? [wrong, guessed] : [guessed, wrong];
+  if (target.has(q)) target.delete(q);
+  else {
+    target.add(q);
+    other.delete(q);
+  }
   renderQGrid();
 });
 
 $('#f-notes').addEventListener('click', (e) => {
   const b = e.target.closest('.chip');
-  if (!b) return;
+  if (!b || b.classList.contains('locked')) return;
   const n = b.dataset.note;
   state.form.notes.has(n) ? state.form.notes.delete(n) : state.form.notes.add(n);
   renderNoteChips();
@@ -441,7 +612,14 @@ function openDialog(exam) {
   $('#exam-error').hidden = true;
   $('#f-name-custom').value = '';
   state.form.wrong = new Set(exam ? exam.wrong : []);
+  state.form.guessed = new Set(exam ? exam.guessed : []);
   state.form.notes = new Set(exam ? exam.notes : []);
+  if (state.form.guessed.size) state.form.notes.delete(GUESS_NOTE);
+  state.form.areaManual = {};
+  if (exam) {
+    for (const a of state.subjects[exam.subject].areas) if (a.manual) state.form.areaManual[a.name] = exam.areas[a.name];
+  }
+  setQMode('wrong');
 
   const unknown = exam ? !exam.examDate : false;
   $('#f-date-unknown').checked = unknown;
@@ -477,6 +655,13 @@ $('#exam-form').addEventListener('submit', async (e) => {
   if (!unknown && !examDate) errors.push('날짜를 선택하거나 "날짜 모름"을 체크해 주세요.');
   if (!examName) errors.push('모의고사 이름을 선택하거나 입력해 주세요.');
   if (scoreStr === '' || !/^\d+$/.test(scoreStr) || Number(scoreStr) > 100) errors.push('점수는 0~100 사이의 정수로 입력해 주세요.');
+  const names = manualNames();
+  const total = manualTotal();
+  if (names.length && total > 0) {
+    const vals = names.map((n) => state.form.areaManual[n]);
+    if (vals.some((v) => !Number.isInteger(v))) errors.push(`틀린 영역의 ${names.join('/')} 개수를 입력해 주세요.`);
+    else if (vals.reduce((a, b) => a + b, 0) !== total) errors.push(`${names.join(' + ')} 개수의 합이 틀린 문제 수(${total})와 같아야 합니다.`);
+  }
   if (errors.length) {
     errEl.textContent = errors.join('\n');
     errEl.hidden = false;
@@ -491,7 +676,9 @@ $('#exam-form').addEventListener('submit', async (e) => {
     round: $('#f-round').value.trim(),
     score: Number(scoreStr),
     wrong: [...state.form.wrong],
-    notes: [...state.form.notes],
+    guessed: [...state.form.guessed],
+    notes: formNotes(),
+    areaManual: Object.fromEntries(names.map((n) => [n, state.form.areaManual[n] ?? 0])),
   };
 
   const btn = $('#exam-submit');

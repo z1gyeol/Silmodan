@@ -70,19 +70,24 @@
 
       <div class="grid-2">
         <section class="card">
-          <div class="card-head"><h2>비고 통계</h2></div>
-          <div id="note-stats"></div>
+          <div class="card-head"><h2>틀린 영역</h2></div>
+          <div id="area-stats"></div>
         </section>
         <section class="card">
-          <div class="card-head"><h2>자주 틀린 문항</h2></div>
-          <div id="wrong-stats"></div>
+          <div class="card-head"><h2>비고 통계</h2></div>
+          <div id="note-stats"></div>
         </section>
       </div>
 
       <section class="card">
+        <div class="card-head"><h2>자주 틀린 문항</h2></div>
+        <div id="wrong-stats"></div>
+      </section>
+
+      <section class="card">
         <div class="card-head">
           <h2>전체 기록</h2>
-          <span class="muted small">최근 시험이 위에 표시됩니다 · 날짜 모름 시험은 ▲▼로 순서를 바꿀 수 있어요</span>
+          <span class="muted small">최근 시험이 위에 표시됩니다 · 날짜 모름 시험은 ▲▼로 날짜 있는 시험 사이 어디로든 옮길 수 있어요</span>
         </div>
         <div class="table-wrap">
           <table class="records">
@@ -94,6 +99,7 @@
                 <th>회차</th>
                 <th class="num">점수</th>
                 <th>틀린 문제</th>
+                <th>틀린 영역</th>
                 <th>비고</th>
                 <th></th>
               </tr>
@@ -159,8 +165,21 @@
         </label>
 
         <div class="field">
-          <span>틀린 문제 <em class="muted" id="wrong-count"></em></span>
+          <div class="q-head">
+            <span>문항 선택 <em class="muted" id="wrong-count"></em></span>
+            <div class="seg seg-sm" id="q-mode">
+              <button type="button" class="seg-btn active" data-mode="wrong">틀림</button>
+              <button type="button" class="seg-btn" data-mode="guessed">찍맞</button>
+            </div>
+          </div>
           <div class="qgrid" id="f-wrong"></div>
+          <p class="hint">위에서 <b>틀림</b> / <b>찍맞</b>을 고른 뒤 번호를 누르세요. 찍맞 문제가 있으면 비고에 ‘찍맞’이 자동으로 들어갑니다.</p>
+        </div>
+
+        <div class="field">
+          <span>틀린 영역</span>
+          <div class="areas" id="f-areas"></div>
+          <p class="hint" id="f-areas-hint"></p>
         </div>
 
         <div class="field">

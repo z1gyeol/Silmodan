@@ -13,6 +13,9 @@
   --primary-100: #ede4ff;
   --primary-200: #d9c8fe;
   --danger: #dc2626;
+  --guess: #f59e0b;
+  --guess-bg: #fff4dc;
+  --guess-text: #9a5b00;
   --radius: 14px;
   --shadow: 0 1px 2px rgba(40, 20, 90, 0.04), 0 4px 16px rgba(40, 20, 90, 0.06);
 }
@@ -95,6 +98,25 @@ input, select { font: inherit; color: inherit; }
 }
 .qbtn:hover { border-color: var(--primary-200); }
 .qbtn.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.qbtn.guess { background: var(--guess-bg); border-color: var(--guess); color: var(--guess-text); font-weight: 700; }
+.q-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.q-head > span { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.seg-sm { padding: 3px; }
+.seg-sm .seg-btn { padding: 4px 12px; font-size: 13px; }
+#q-mode .seg-btn[data-mode="guessed"].active { color: var(--guess-text); }
+.hint { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.hint b { color: var(--text-2); font-weight: 600; }
+
+.areas { display: flex; flex-wrap: wrap; gap: 8px; }
+.area-box { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; background: var(--surface-2); font-size: 14px; }
+.area-box b { color: var(--primary-700); font-variant-numeric: tabular-nums; min-width: 1ch; text-align: right; }
+.area-box.manual { background: var(--surface); }
+.area-box input { width: 56px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; text-align: right; outline: none; }
+.area-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-100); }
+.area-box .auto { font-size: 11px; color: var(--muted); }
+.guess-tag { display: inline-block; font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--guess-bg); color: var(--guess-text); margin-left: 4px; white-space: nowrap; }
+.area-cell { color: var(--text-2); font-size: 13px; white-space: nowrap; }
+.chip.locked { cursor: default; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
@@ -131,7 +153,7 @@ input, select { font: inherit; color: inherit; }
 .chart-wrap .empty { position: absolute; inset: 0; display: grid; place-items: center; }
 
 /* ---------- 비고/오답 통계 ---------- */
-.bar-row { display: grid; grid-template-columns: 84px 1fr 48px; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; }
+.bar-row { display: grid; grid-template-columns: 72px 1fr 92px; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; }
 .bar-track { height: 10px; background: var(--primary-50); border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; background: var(--primary); border-radius: 999px; }
 .bar-count { text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; }
