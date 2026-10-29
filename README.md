@@ -4,7 +4,7 @@
 
 ## 기능
 
-- **로그인 / 회원가입**: 계정별로 기록을 DB(SQLite)에 저장합니다. 비밀번호는 scrypt로 해시해서 저장합니다.
+- **로그인 / 회원가입**: 계정별로 기록을 DB(Postgres)에 저장합니다. 비밀번호는 scrypt로 해시해서 저장합니다.
 - **과목**: 국어, 수학
 - **기록 입력**
   - 응시 날짜를 고르거나 **날짜 모름** 체크
@@ -18,29 +18,41 @@
 - **과목별 전체 성적**: 최근 점수, 평균, 최근 5회 평균, 최고/최저 점수, 비고 통계, 자주 틀린 문항, 전체 기록 표(수정/삭제)
 - **성적 변화 그래프**: 오래된 시험부터 최근 시험까지 점수 변화
 
-## 실행
+## Vercel 배포 (Neon Postgres)
 
-Node.js 22.13 이상이 필요합니다. 내장 `node:sqlite`를 쓰기 때문에 따로 DB를 설치하지 않아도 됩니다.
+1. https://vercel.com 에 GitHub 계정으로 로그인
+2. **Add New → Project** 에서 이 저장소를 **Import** (설정은 기본값 그대로)
+3. 프로젝트의 **Storage** 탭 → **Create Database** → **Neon** 선택 후 프로젝트에 연결
+   - `DATABASE_URL` 환경 변수가 자동으로 추가됩니다.
+4. **Deployments** 탭에서 **Redeploy** (DB 연결 전에 배포했다면)
+5. 첫 요청 때 테이블이 자동으로 만들어집니다. 이후 `main` 에 푸시하면 자동 배포됩니다.
+
+## 로컬 실행
+
+Node.js 20.12 이상과 Postgres 접속 주소가 필요합니다 (Neon 주소를 그대로 써도 됩니다).
 
 ```bash
 npm install
-npm start
+cp .env.example .env   # DATABASE_URL 입력
+npm run dev
 # http://localhost:3000
 ```
 
 ### 환경 변수
 
-| 이름 | 기본값 | 설명 |
-|---|---|---|
-| `PORT` | `3000` | 서버 포트 |
-| `DB_PATH` | `./data/silmodan.db` | SQLite DB 파일 경로 |
-| `COOKIE_SECURE` | `false` | HTTPS로 배포할 때 `true`로 설정 |
+| 이름 | 설명 |
+|---|---|
+| `DATABASE_URL` | Postgres 접속 주소 (Vercel + Neon 연결 시 자동 설정) |
+| `PORT` | 로컬 서버 포트 (기본 3000) |
+| `COOKIE_SECURE` | 세션 쿠키 Secure 여부. 기본값은 Vercel에서 `true`, 로컬에서 `false` |
 
 ## 구조
 
 ```
-server.js          Express 서버 + API + DB 스키마
-public/index.html  화면
-public/style.css   스타일 (보라색 테마)
-public/app.js      프론트엔드 로직, Chart.js 그래프
+api/index.js       Vercel 서버리스 함수 진입점 (/api/*)
+lib/app.js         Express 앱 + API
+lib/db.js          Postgres 연결, 테이블 생성
+dev-server.js      로컬 개발 서버
+public/            화면 (index.html, style.css, app.js, Chart.js)
+vercel.json        /api/* → 함수 연결
 ```

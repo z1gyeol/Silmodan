@@ -2,9 +2,10 @@
   "name": "silmodan",
   "version": "1.0.0",
   "description": "실모단 - 실전 모의고사 기록 사이트",
-  "main": "server.js",
+  "main": "lib/app.js",
   "scripts": {
-    "start": "node --no-warnings=ExperimentalWarning server.js"
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js"
   },
   "repository": {
     "type": "git",
@@ -16,11 +17,11 @@
   },
   "homepage": "https://github.com/z1gyeol/Silmodan#readme",
   "dependencies": {
-    "chart.js": "^4.6.1",
-    "express": "^4.22.3"
+    "express": "^4.22.3",
+    "pg": "^8.23.1"
   },
   "private": true,
   "engines": {
-    "node": ">=22.13"
+    "node": ">=20.12"
   }
 }
